@@ -448,3 +448,28 @@ footer {
     font-size: 1.8rem;
   }
 }
+
+/* Drag handle */
+.drag-handle {
+  width: 40px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  margin: 0 auto 12px;
+  cursor: grab;
+}
+
+/* Анимация нажатия на кнопки */
+.ctrl-btn {
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+.ctrl-btn:active {
+  transform: scale(0.92);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+}
+
+/* Легкая анимация для стеклянных кнопок */
+.btn-glass:active {
+  transform: scale(0.97);
+  transition: transform 0.1s;
+}
