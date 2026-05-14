@@ -9,12 +9,37 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAzUlEQVR4AZSRsQ7BYBSFi4SnsPAGNoNFImITBotFvIXJIJ7BZpAwGCRiIRIxmgnPQiR8p0lvmr9tmjb3623Pvefm/m3ey3ilGa7Mu4BFkqFKRwV+8AWLOEOD6h0eMIEWWLiGMpUz5GAOB5jBFPxwDRKlabIauwixK5UoDKAOPdDEGvkGL3hCETxNU95y07Q+eQgL6EBYX/FuhiYvIxhDG95QAB04rJtBB13SIE5kfXv9gyPP0oR0M2j/PcU1aKXA4Opm0AobmnfwgSAi+h8AAP//w58gRwAAAAZJREFUAwBpnCsZFl7H2gAAAABJRU5ErkJggg==",
+      "src": "https://i.imgur.com/8KjL5Z8.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.imgur.com/8KjL5Z8.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.imgur.com/8KjL5Z8.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.imgur.com/8KjL5Z8.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.imgur.com/8KjL5Z8.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.imgur.com/8KjL5Z8.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAzUlEQVR4AZSRsQ7BYBSFi4SnsPAGNoNFImITBotFvIXJIJ7BZpAwGCRiIRIxmgnPQiR8p0lvmr9tmjb3623Pvefm/m3ey3ilGa7Mu4BFkqFKRwV+8AWLOEOD6h0eMIEWWLiGMpUz5GAOB5jBFPxwDRKlabIauwixK5UoDKAOPdDEGvkGL3hCETxNU95y07Q+eQgL6EBYX/FuhiYvIxhDG95QAB04rJtBB13SIE5kfXv9gyPP0oR0M2j/PcU1aKXA4Opm0AobmnfwgSAi+h8AAP//w58gRwAAAAZJREFUAwBpnCsZFl7H2gAAAABJRU5ErkJggg==",
+      "src": "https://i.imgur.com/8KjL5Z8.png",
       "sizes": "512x512",
       "type": "image/png"
     }
