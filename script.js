@@ -257,18 +257,69 @@ animate();
 
   function exportCSV() { let csv = "Date,Distance(km),Duration(ms),AvgSpeed(kmh),MaxSpeed(kmh)\n"; history.forEach(r => csv += `${r.date},${r.distance},${r.duration},${r.avgSpeed},${r.maxSpeed}\n`); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download = `velotracker_${Date.now()}.csv`; a.click(); }
   function exportGPX() { if (!positions.length) { alert("нет активного маршрута"); return; } let gpx = `<?xml version="1.0"?><gpx version="1.1" creator="VeloTracker"><trk><name>Поездка</name><trkseg>\n`; positions.forEach(p => gpx += `<trkpt lat="${p.lat}" lon="${p.lng}"><time>${new Date(p.timestamp).toISOString()}</time></trkpt>\n`); gpx += `</trkseg></trk></gpx>`; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([gpx],{type:'application/gpx+xml'})); a.download = `route_${Date.now()}.gpx`; a.click(); }
-  function setReminder() { const time = document.getElementById('reminderTime').value; if (!time) return; const [h,m] = time.split(':').map(Number); let d = new Date(); d.setHours(h,m,0,0); if (d <= new Date()) d.setDate(d.getDate()+1); const ms = d - new Date(); if (window._reminderTimeout) clearTimeout(window._reminderTimeout); window._reminderTimeout = setTimeout(async () => { await sendNotification('VeloTracker', 'Пора на велосипед!'); setReminder(); }, ms); alert(`Напоминание установлено на ${time}`); }
+  function setReminder() { const time = document.getElementById('reminderTime').value; if (!time) return; const [h,m] = time.split(':').map(Number); let d = new Date(); d.setHours(h,m,0,0); if (d <= new Date()) d.setDate(d.getDate()+1); const ms = d - new Date(); if (window._reminderTimeout) clearTimeout(window._reminderTimeout); window._reminderTimeout = setTimeout(async () => { await sendNotification('VeloTracker', 'Пора на велосипед!'); setReminder(); }, ms); }
   async function getWeather() { try { const pos = await new Promise((res,rej)=> navigator.geolocation.getCurrentPosition(res,rej,{timeout:4000})); const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`); const d = await r.json(); document.getElementById('weatherText').innerHTML = `${d.current_weather.temperature}°C, ${d.current_weather.windspeed} км/ч`; } catch(e) { document.getElementById('weatherText').innerHTML = '—'; } }
   function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none'); document.getElementById(tabId+'Tab').style.display = 'block'; document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active'); if (tabId === 'stats') updateChart(); }
 
-  const mapContainer = document.getElementById('mapContainer');
-  const controlPanel = document.getElementById('controlPanel');
-  const closeMapBtn = document.getElementById('closeMapBtn');
-  function enterFullscreenMap() { controlPanel.classList.add('hidden'); closeMapBtn.classList.add('visible'); }
-  function exitFullscreenMap() { controlPanel.classList.remove('hidden'); closeMapBtn.classList.remove('visible'); }
-  mapContainer.addEventListener('click', (e) => { if (e.target === mapContainer || e.target.closest('#map')) { if (!controlPanel.classList.contains('hidden')) enterFullscreenMap(); } });
-  closeMapBtn.addEventListener('click', exitFullscreenMap);
+  // ---- Свайп-панель ----
+  const panel = document.getElementById('controlPanel');
+  const dragHandle = document.getElementById('dragHandle');
+  let startY = 0;
+  let currentTranslate = 0;
+  let isDragging = false;
+  let panelHeight = panel.offsetHeight;
 
+  function updatePanelHeight() {
+    panelHeight = panel.offsetHeight;
+  }
+  window.addEventListener('resize', updatePanelHeight);
+
+  function setPanelTranslate(value) {
+    panel.style.transform = `translateY(${value}px)`;
+    currentTranslate = value;
+    if (value > panelHeight * 0.6) {
+      panel.classList.add('hidden');
+    } else {
+      panel.classList.remove('hidden');
+    }
+  }
+
+  function onTouchStart(e) {
+    startY = e.touches[0].clientY;
+    panel.style.transition = 'none';
+    isDragging = true;
+  }
+
+  function onTouchMove(e) {
+    if (!isDragging) return;
+    const deltaY = e.touches[0].clientY - startY;
+    let newTranslate = Math.max(0, currentTranslate + deltaY);
+    newTranslate = Math.min(newTranslate, panelHeight);
+    panel.style.transform = `translateY(${newTranslate}px)`;
+  }
+
+  function onTouchEnd(e) {
+    if (!isDragging) return;
+    isDragging = false;
+    panel.style.transition = 'transform 0.3s ease';
+    const current = currentTranslate;
+    if (current > panelHeight * 0.3) {
+      setPanelTranslate(panelHeight);
+    } else {
+      setPanelTranslate(0);
+    }
+    startY = 0;
+  }
+
+  dragHandle.addEventListener('touchstart', onTouchStart);
+  dragHandle.addEventListener('touchmove', onTouchMove);
+  dragHandle.addEventListener('touchend', onTouchEnd);
+
+  // Инициализация: панель видна
+  setPanelTranslate(0);
+  updatePanelHeight();
+
+  // Остальные обработчики
   const splash = document.getElementById('splashScreen');
   const mainApp = document.getElementById('mainApp');
   document.getElementById('startJourneyBtn').addEventListener('click', () => {
@@ -291,6 +342,6 @@ animate();
   document.getElementById('exportCSVBtn').addEventListener('click', exportCSV);
   document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
   document.getElementById('exportGPXBtn').addEventListener('click', exportGPX);
-  document.getElementById('setReminderBtn').addEventListener('click', setReminder);
   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.tab)));
+  document.getElementById('reminderTime').addEventListener('change', setReminder);
 })();
