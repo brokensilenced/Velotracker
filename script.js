@@ -7,6 +7,11 @@ function applyTheme(mode) {
     document.body.classList.remove('light-mode');
     localStorage.setItem('veloTheme', 'dark');
   }
+  const themeBtn = document.getElementById('themeToggle');
+  if (themeBtn) {
+    themeBtn.setAttribute('aria-label', mode === 'light' ? 'Включить тёмную тему' : 'Включить светлую тему');
+  }
+  if (typeof window.__veloSyncMapTheme === 'function') window.__veloSyncMapTheme();
 }
 
 function toggleTheme() {
@@ -24,7 +29,18 @@ if (savedTheme === 'light') {
   applyTheme('dark');
 }
 
-document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+(function initThemeToggle() {
+  const btn = document.getElementById('themeToggle');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    btn.classList.remove('is-switching');
+    void btn.offsetWidth;
+    btn.classList.add('is-switching');
+    toggleTheme();
+    clearTimeout(btn._themeAnimT);
+    btn._themeAnimT = setTimeout(() => btn.classList.remove('is-switching'), 520);
+  });
+})();
 
 // ---------- Планета (Three.js) ----------
 const canvas = document.getElementById('planetCanvas');
@@ -50,7 +66,7 @@ window.addEventListener('resize', resizeCanvas);
 const textureLoader = new THREE.TextureLoader();
 const earthLightsMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_lights_2048.png');
 const geometry = new THREE.SphereGeometry(1.2, 128, 128);
-const material = new THREE.MeshBasicMaterial({ map: earthLightsMap });
+const material = new THREE.MeshBasicMaterial({ map: earthLightsMap, color: 0xa8b4c4 });
 const earth = new THREE.Mesh(geometry, material);
 scene.add(earth);
 
@@ -89,30 +105,56 @@ animate();
     }
   }
 
-  let map, polyline, currentPosition = null, positions = [], tracking = false, paused = false;
+  let map, baseTileLayer, polyline, currentPosition = null, positions = [], tracking = false, paused = false;
   let startTime = null, pauseTime = 0, timerInterval = null, totalDistance = 0, maxSpeed = 0;
   let history = [], bikeMarker = null, watchId = null;
 
-  const customIcon = L.divIcon({
-    html: `<div style="filter: drop-shadow(0 4px 8px rgba(255,255,255,0.3)); transition: transform 0.2s;">
+  function isLightTheme() {
+    return document.body.classList.contains('light-mode');
+  }
+
+  function basemapTemplate() {
+    return isLightTheme()
+      ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+  }
+
+  function trackLineColor() {
+    return isLightTheme() ? '#4a5d72' : '#9a9ea8';
+  }
+
+  function bikeIcon() {
+    const c = isLightTheme() ? '#1a2433' : '#ffffff';
+    const sh = isLightTheme() ? '0.2' : '0.35';
+    return L.divIcon({
+      html: `<div style="filter: drop-shadow(0 4px 8px rgba(0,0,0,${sh})); transition: transform 0.2s;">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="19" r="2" stroke="#ffffff" stroke-width="2" fill="none"/>
-        <circle cx="8" cy="19" r="2" stroke="#ffffff" stroke-width="2" fill="none"/>
-        <path d="M16 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" fill="#ffffff"/>
-        <path d="M16.41 11H20V9h-3.59l-3-3c-.78-.78-2.05-.78-2.83 0L7.99 8.59c-.78.78-.78 2.05 0 2.83l3 3v4.59h2v-4.59c0-.53-.21-1.04-.59-1.41l-2-2 2.59-2.59 2 2c.38.38.88.59 1.41.59Z" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="16" cy="19" r="2" stroke="${c}" stroke-width="2" fill="none"/>
+        <circle cx="8" cy="19" r="2" stroke="${c}" stroke-width="2" fill="none"/>
+        <path d="M16 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" fill="${c}"/>
+        <path d="M16.41 11H20V9h-3.59l-3-3c-.78-.78-2.05-.78-2.83 0L7.99 8.59c-.78.78-.78 2.05 0 2.83l3 3v4.59h2v-4.59c0-.53-.21-1.04-.59-1.41l-2-2 2.59-2.59 2 2c.38.38.88.59 1.41.59Z" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>`,
-    iconSize: [36, 36],
-    className: ''
-  });
+      iconSize: [36, 36],
+      className: ''
+    });
+  }
+
+  function syncMapBasemap() {
+    if (baseTileLayer) baseTileLayer.setUrl(basemapTemplate());
+    if (polyline) polyline.setStyle({ color: trackLineColor() });
+    if (bikeMarker && map) bikeMarker.setIcon(bikeIcon());
+    if (map) map.invalidateSize();
+  }
+  window.__veloSyncMapTheme = syncMapBasemap;
 
   function initMap() {
     map = L.map('map', { zoomControl: false, attributionControl: false }).setView([55.751244, 37.618423], 13);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    baseTileLayer = L.tileLayer(basemapTemplate(), {
       subdomains: 'abcd',
       maxZoom: 19
     }).addTo(map);
-    polyline = L.polyline([], { color: '#ffffff', weight: 5, opacity: 0.9, smoothFactor: 1 }).addTo(map);
+    polyline = L.polyline([], { color: trackLineColor(), weight: 5, opacity: 0.9, smoothFactor: 1 }).addTo(map);
   }
 
   function updatePosition(position) {
@@ -131,11 +173,11 @@ animate();
       positions.push({lat, lng, timestamp: now});
       polyline.setLatLngs(positions.map(p => [p.lat, p.lng]));
       if (bikeMarker) map.removeLayer(bikeMarker);
-      bikeMarker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+      bikeMarker = L.marker([lat, lng], { icon: bikeIcon() }).addTo(map);
       if (positions.length > 1) map.fitBounds(polyline.getBounds(), { padding: [50,50], maxZoom: 17 });
     } else {
       positions.push({lat, lng, timestamp: now});
-      bikeMarker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+      bikeMarker = L.marker([lat, lng], { icon: bikeIcon() }).addTo(map);
     }
     currentPosition = { lat, lng, timestamp: now };
   }
@@ -245,13 +287,16 @@ animate();
     const last7 = history.slice(0,7).reverse();
     if (chart) chart.destroy();
     if (last7.length === 0) return;
+    const warm = document.body.classList.contains('light-mode') ? '#4a4a4a' : '#9a9ea8';
+    const grid = document.body.classList.contains('light-mode') ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)';
+    const legend = document.body.classList.contains('light-mode') ? '#555555' : '#8f8f8f';
     chart = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: last7.map(r => new Date(r.date).toLocaleDateString()),
-        datasets: [{ label: 'км', data: last7.map(r => r.distance), backgroundColor: '#ffffff', borderRadius: 10, barPercentage: 0.6 }]
+        datasets: [{ label: 'км', data: last7.map(r => r.distance), backgroundColor: warm, borderRadius: 10, barPercentage: 0.62 }]
       },
-      options: { responsive: true, plugins: { legend: { labels: { color: '#aaa' } } }, scales: { y: { grid: { color: '#2a2a2a' } } } }
+      options: { responsive: true, animation: { duration: 520, easing: 'easeOutQuart' }, plugins: { legend: { labels: { color: legend } } }, scales: { y: { grid: { color: grid }, ticks: { color: legend } }, x: { ticks: { color: legend }, grid: { display: false } } } }
     });
   }
 
@@ -261,73 +306,211 @@ animate();
   async function getWeather() { try { const pos = await new Promise((res,rej)=> navigator.geolocation.getCurrentPosition(res,rej,{timeout:4000})); const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`); const d = await r.json(); document.getElementById('weatherText').innerHTML = `${d.current_weather.temperature}°C, ${d.current_weather.windspeed} км/ч`; } catch(e) { document.getElementById('weatherText').innerHTML = '—'; } }
   function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none'); document.getElementById(tabId+'Tab').style.display = 'block'; document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active'); if (tabId === 'stats') updateChart(); }
 
-  // ---- Свайп-панель ----
+  // ---- Bottom sheet: вниз — больше карты, вверх — меню (3 снапа) ----
   const panel = document.getElementById('controlPanel');
   const dragHandle = document.getElementById('dragHandle');
-  let startY = 0;
-  let currentTranslate = 0;
-  let isDragging = false;
-  let panelHeight = panel.offsetHeight;
+  const gestureZone = document.getElementById('sheetGestureZone');
+  const mainAppEl = document.getElementById('mainApp');
+  const mapSwipeBand = document.getElementById('mapSwipeBand');
 
-  function updatePanelHeight() {
-    panelHeight = panel.offsetHeight;
+  const SNAP_NAMES = ['open', 'peek', 'mini'];
+  let sheetSnap = 0;
+  let translateY = 0;
+  let translatePeek = 180;
+  let translateMini = 300;
+  let dragStartY = 0;
+  let dragStartTranslate = 0;
+  let isSheetDragging = false;
+  let mapSwipeStartY = 0;
+  let mapSwipeActive = false;
+
+  const mapEdgeUi = document.getElementById('mapEdgeUi');
+
+  function positionMapEdgeUi() {
+    if (!mapEdgeUi || !panel || !mainAppEl.classList.contains('visible')) return;
+    const top = panel.getBoundingClientRect().top;
+    const gap = 12;
+    const fromBottom = Math.round(window.innerHeight - top + gap);
+    mapEdgeUi.style.bottom = `${Math.max(fromBottom, 88)}px`;
   }
-  window.addEventListener('resize', updatePanelHeight);
 
-  function setPanelTranslate(value) {
-    panel.style.transform = `translateY(${value}px)`;
-    currentTranslate = value;
-    if (value > panelHeight * 0.6) {
-      panel.classList.add('hidden');
-    } else {
-      panel.classList.remove('hidden');
-    }
-  }
-
-  function onTouchStart(e) {
-    startY = e.touches[0].clientY;
+  function measureSheet() {
+    if (!mainAppEl.classList.contains('visible')) return;
+    panel.dataset.sheet = 'open';
     panel.style.transition = 'none';
-    isDragging = true;
+    panel.style.transform = 'translateY(0)';
+    void panel.offsetHeight;
+    const fullH = panel.getBoundingClientRect().height;
+    const peekVisible = Math.min(280, Math.max(200, fullH * 0.4));
+    const miniVisible = 102;
+    translatePeek = Math.max(80, fullH - peekVisible);
+    translateMini = Math.max(translatePeek + 48, fullH - miniVisible);
+    applySheetSnap(sheetSnap, false);
+    panel.style.transition = '';
   }
 
-  function onTouchMove(e) {
-    if (!isDragging) return;
-    const deltaY = e.touches[0].clientY - startY;
-    let newTranslate = Math.max(0, currentTranslate + deltaY);
-    newTranslate = Math.min(newTranslate, panelHeight);
-    panel.style.transform = `translateY(${newTranslate}px)`;
+  function applySheetSnap(index, animate) {
+    sheetSnap = Math.max(0, Math.min(2, index));
+    const snaps = [0, translatePeek, translateMini];
+    translateY = snaps[sheetSnap];
+    panel.dataset.sheet = SNAP_NAMES[sheetSnap];
+    mainAppEl.dataset.mapHint = sheetSnap >= 1 ? '1' : '0';
+    dragHandle.setAttribute('aria-valuenow', String(2 - sheetSnap));
+    panel.style.transition = animate ? 'transform 0.5s cubic-bezier(0.33, 1, 0.32, 1)' : 'none';
+    panel.style.transform = `translateY(${translateY}px)`;
+    positionMapEdgeUi();
+    const done = () => { if (typeof map !== 'undefined' && map) map.invalidateSize(); };
+    if (animate) setTimeout(done, 520);
+    else done();
   }
 
-  function onTouchEnd(e) {
-    if (!isDragging) return;
-    isDragging = false;
-    panel.style.transition = 'transform 0.3s ease';
-    const current = currentTranslate;
-    if (current > panelHeight * 0.3) {
-      setPanelTranslate(panelHeight);
-    } else {
-      setPanelTranslate(0);
+  function setSheetTranslate(y, fromDrag) {
+    const maxY = translateMini;
+    translateY = Math.max(0, Math.min(maxY, y));
+    panel.style.transform = `translateY(${translateY}px)`;
+    if (fromDrag) panel.dataset.sheet = 'dragging';
+    positionMapEdgeUi();
+  }
+
+  function nearestSnapIndex(y) {
+    const snaps = [0, translatePeek, translateMini];
+    let best = 0;
+    let bestD = Infinity;
+    snaps.forEach((s, i) => {
+      const d = Math.abs(y - s);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    });
+    return best;
+  }
+
+  function isInteractiveElement(el) {
+    while (el && el !== panel) {
+      const tag = el.tagName;
+      if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'A' || tag === 'SELECT' || tag === 'TEXTAREA' || el.classList.contains('tab-content') || el.classList.contains('history-item') || el.classList.contains('tab') || el.classList.contains('btn-glass')) {
+        return true;
+      }
+      el = el.parentElement;
     }
-    startY = 0;
+    return false;
   }
 
-  dragHandle.addEventListener('touchstart', onTouchStart);
-  dragHandle.addEventListener('touchmove', onTouchMove);
-  dragHandle.addEventListener('touchend', onTouchEnd);
+  function sheetDragStart(clientY) {
+    dragStartY = clientY;
+    dragStartTranslate = translateY;
+    isSheetDragging = true;
+    panel.style.transition = 'none';
+  }
 
-  // Инициализация: панель видна
-  setPanelTranslate(0);
-  updatePanelHeight();
+  function sheetDragMove(clientY) {
+    if (!isSheetDragging) return;
+    const delta = clientY - dragStartY;
+    setSheetTranslate(dragStartTranslate + delta, true);
+  }
+
+  function sheetDragEnd() {
+    if (!isSheetDragging) return;
+    isSheetDragging = false;
+    applySheetSnap(nearestSnapIndex(translateY), true);
+  }
+
+  function bindSheetPointer(target) {
+    if (!target) return;
+    const stop = (e) => e.stopPropagation();
+    target.addEventListener('touchstart', (e) => {
+      stop(e);
+      e.preventDefault();
+      sheetDragStart(e.touches[0].clientY);
+    }, { passive: false });
+    target.addEventListener('touchmove', (e) => {
+      stop(e);
+      if (!isSheetDragging) return;
+      e.preventDefault();
+      sheetDragMove(e.touches[0].clientY);
+    }, { passive: false });
+    target.addEventListener('touchend', (e) => {
+      stop(e);
+      sheetDragEnd();
+    });
+    target.addEventListener('touchcancel', (e) => {
+      stop(e);
+      sheetDragEnd();
+    });
+
+    target.addEventListener('mousedown', (e) => {
+      stop(e);
+      if (e.button !== 0) return;
+      e.preventDefault();
+      sheetDragStart(e.clientY);
+      const onMove = (ev) => sheetDragMove(ev.clientY);
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        sheetDragEnd();
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  bindSheetPointer(dragHandle);
+  bindSheetPointer(gestureZone);
+
+  panel.addEventListener('touchstart', (e) => {
+    if (isInteractiveElement(e.target)) return;
+    if (e.target.closest('.drag-handle') || e.target.closest('.sheet-gesture-zone')) return;
+    sheetDragStart(e.touches[0].clientY);
+  }, { passive: true });
+
+  panel.addEventListener('touchmove', (e) => {
+    if (!isSheetDragging) return;
+    if (isInteractiveElement(e.target)) return;
+    if (e.target.closest('.sheet-gesture-zone')) return;
+    sheetDragMove(e.touches[0].clientY);
+  }, { passive: true });
+
+  panel.addEventListener('touchend', sheetDragEnd);
+  panel.addEventListener('touchcancel', sheetDragEnd);
+
+  if (mapSwipeBand) {
+    mapSwipeBand.addEventListener('touchstart', (e) => {
+      mapSwipeStartY = e.touches[0].clientY;
+      mapSwipeActive = true;
+    }, { passive: true });
+    mapSwipeBand.addEventListener('touchend', (e) => {
+      if (!mapSwipeActive) return;
+      mapSwipeActive = false;
+      const endY = e.changedTouches[0].clientY;
+      const dy = endY - mapSwipeStartY;
+      if (dy < -36) applySheetSnap(Math.max(0, sheetSnap - 1), true);
+      else if (dy > 36) applySheetSnap(Math.min(2, sheetSnap + 1), true);
+    });
+  }
+
+  window.addEventListener('resize', () => { clearTimeout(window._sheetResizeT); window._sheetResizeT = setTimeout(measureSheet, 120); });
+
+  function playCtrlAnim(btn) {
+    if (!btn) return;
+    btn.classList.remove('is-animating');
+    void btn.offsetWidth;
+    btn.classList.add('is-animating');
+    clearTimeout(btn._ctrlAnimT);
+    btn._ctrlAnimT = setTimeout(() => btn.classList.remove('is-animating'), 460);
+  }
 
   // Остальные обработчики
   const splash = document.getElementById('splashScreen');
-  const mainApp = document.getElementById('mainApp');
   document.getElementById('startJourneyBtn').addEventListener('click', () => {
     splash.classList.add('hide');
     setTimeout(() => {
       splash.style.display = 'none';
-      mainApp.classList.add('visible');
+      mainAppEl.classList.add('visible');
       initMap();
+      requestAnimationFrame(() => {
+        measureSheet();
+      });
       const saved = localStorage.getItem('veloTracker_history');
       if (saved) { history = JSON.parse(saved); renderHistory(); updateRecords(); }
       if ("geolocation" in navigator) navigator.geolocation.getCurrentPosition(pos => map.setView([pos.coords.latitude, pos.coords.longitude], 14));
@@ -336,9 +519,9 @@ animate();
       if (Notification.permission === "default") Notification.requestPermission();
     }, 650);
   });
-  document.getElementById('startBtn').addEventListener('click', startTracking);
-  document.getElementById('pauseBtn').addEventListener('click', pauseTracking);
-  document.getElementById('stopBtn').addEventListener('click', stopTracking);
+  document.getElementById('startBtn').addEventListener('click', () => { playCtrlAnim(document.getElementById('startBtn')); startTracking(); });
+  document.getElementById('pauseBtn').addEventListener('click', () => { playCtrlAnim(document.getElementById('pauseBtn')); pauseTracking(); });
+  document.getElementById('stopBtn').addEventListener('click', () => { playCtrlAnim(document.getElementById('stopBtn')); stopTracking(); });
   document.getElementById('exportCSVBtn').addEventListener('click', exportCSV);
   document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
   document.getElementById('exportGPXBtn').addEventListener('click', exportGPX);
