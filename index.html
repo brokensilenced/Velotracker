@@ -17,6 +17,12 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<button type="button" class="theme-toggle-btn" id="themeToggle" aria-label="Переключить тему">
+  <span class="theme-toggle-btn__icons" aria-hidden="true">
+    <svg class="theme-toggle-btn__icon theme-toggle-btn__icon--sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.01c2.76 0 5.01-2.25 5.01-5.01S14.76 6.99 12 6.99 6.99 9.24 6.99 12s2.25 5.01 5.01 5.01M12 9c1.66 0 3.01 1.35 3.01 3.01s-1.35 3.01-3.01 3.01-3.01-1.35-3.01-3.01S10.34 9 12 9m1 10h-2v3h2zm0-17h-2v3h2zM2 11h3v2H2zm17 0h3v2h-3zM4.22 18.36l.71.71.71.71 1.06-1.06 1.06-1.06-.71-.71-.71-.71-1.06 1.06zM19.78 5.64l-.71-.71-.71-.71-1.06 1.06-1.06 1.06.71.71.71.71 1.06-1.06zm-12.02.7L6.7 5.28 5.64 4.22l-.71.71-.71.71L5.28 6.7l1.06 1.06.71-.71zm8.48 11.32 1.06 1.06 1.06 1.06.71-.71.71-.71-1.06-1.06-1.06-1.06-.71.71z"></path></svg>
+    <svg class="theme-toggle-btn__icon theme-toggle-btn__icon--moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M20.71 13.51c-.78.23-1.58.35-2.38.35-4.52 0-8.2-3.68-8.2-8.2 0-.8.12-1.6.35-2.38a1.002 1.002 0 0 0-1.25-1.25A10.17 10.17 0 0 0 2 11.8C2 17.42 6.57 22 12.2 22c4.53 0 8.45-2.91 9.76-7.24.11-.35.01-.74-.25-1s-.64-.36-1-.25M12.2 20C7.68 20 4 16.32 4 11.8a8.15 8.15 0 0 1 4.18-7.15c-.03.34-.05.68-.05 1.02 0 5.62 4.57 10.2 10.2 10.2.34 0 .68-.02 1.02-.05C17.93 18.38 15.23 20 12.2 20"></path><path d="m18 2-1.25 2.75L14 6l2.75 1.25L18 10l1.25-2.75L22 6l-2.75-1.25z"></path></svg>
+  </span>
+</button>
 <div class="splash" id="splashScreen">
   <div class="splash-content">
     <canvas id="planetCanvas"></canvas>
@@ -30,10 +36,21 @@
   <div class="app-bg"></div>
   <div class="map-fullscreen" id="mapContainer">
     <div id="map"></div>
+    <div class="map-edge-ui" id="mapEdgeUi">
+      <div class="map-pull-hint" id="mapPullHint" aria-hidden="true">
+        <i class='bx bx-chevrons-up'></i>
+        <span>вверх — меню</span>
+      </div>
+      <div class="map-swipe-band" id="mapSwipeBand" aria-label="Жест по вертикали: вверх меню, вниз карта">
+        <span class="map-swipe-band__label">↑ меню · ↓ карта</span>
+      </div>
+    </div>
   </div>
-  <div class="control-panel" id="controlPanel">
-    <div class="drag-handle" id="dragHandle"></div>
-    <div class="records-panel">
+  <div class="control-panel" id="controlPanel" data-sheet="open">
+    <div class="sheet-gesture-zone" id="sheetGestureZone" aria-hidden="true"></div>
+    <div class="drag-handle" id="dragHandle" role="slider" aria-valuemin="0" aria-valuemax="2" aria-valuenow="2" aria-label="Высота панели: карта или меню"></div>
+    <p class="sheet-hint" id="sheetHint"><i class='bx bx-map-alt'></i> вниз — больше карты · <i class='bx bx-menu'></i> вверх — меню</p>
+    <div class="records-panel records-panel--scroll">
       <div class="records-title"><i class='bx bx-trophy'></i> личные рекорды</div>
       <div class="records-grid">
         <div class="record-item"><div class="record-value" id="bestDist">0</div><div class="record-label">макс км</div></div>
@@ -41,23 +58,35 @@
         <div class="record-item"><div class="record-value" id="bestTime">0</div><div class="record-label">макс мин</div></div>
       </div>
     </div>
-    <div class="stats-row">
-      <div class="stat-block"><div class="stat-value" id="timeDisplay">00:00:00</div><div class="stat-label">время</div></div>
-      <div class="stat-block"><div class="stat-value" id="distanceDisplay">0.00</div><div class="stat-label">км</div></div>
-    </div>
-    <div class="stats-row">
-      <div class="stat-block"><div class="stat-value" id="speedCurrent">0.0</div><div class="stat-label">скорость</div></div>
-      <div class="stat-block"><div class="stat-value" id="speedAvg">0.0</div><div class="stat-label">средняя</div></div>
+    <div class="stats-hero">
+      <div class="stat-block stat-block--hero">
+        <div class="stat-value" id="timeDisplay">00:00:00</div>
+        <div class="stat-label">время</div>
+      </div>
+      <div class="stats-hero-side">
+        <div class="stat-block stat-block--compact">
+          <div class="stat-value stat-value--sm" id="distanceDisplay">0.00</div>
+          <div class="stat-label">км</div>
+        </div>
+        <div class="stat-block stat-block--compact">
+          <div class="stat-value stat-value--sm" id="speedCurrent">0.0</div>
+          <div class="stat-label">км/ч</div>
+        </div>
+        <div class="stat-block stat-block--compact">
+          <div class="stat-value stat-value--sm" id="speedAvg">0.0</div>
+          <div class="stat-label">средняя</div>
+        </div>
+      </div>
     </div>
     <div class="controls">
-      <div class="ctrl-btn btn-start" id="startBtn"><i class='bx bx-play'></i></div>
-      <div class="ctrl-btn" id="pauseBtn"><i class='bx bx-pause'></i></div>
-      <div class="ctrl-btn" id="stopBtn"><i class='bx bx-stop'></i></div>
+      <button type="button" class="ctrl-btn btn-start" id="startBtn" data-ctrl="start"><i class='bx bx-play'></i><span class="ctrl-ripple" aria-hidden="true"></span></button>
+      <button type="button" class="ctrl-btn btn-pause" id="pauseBtn" data-ctrl="pause"><i class='bx bx-pause'></i><span class="ctrl-ripple" aria-hidden="true"></span></button>
+      <button type="button" class="ctrl-btn btn-stop" id="stopBtn" data-ctrl="stop"><i class='bx bx-stop'></i><span class="ctrl-ripple" aria-hidden="true"></span></button>
     </div>
     <div class="tabs">
-      <div class="tab active" data-tab="history"><i class='bx bx-history'></i> история</div>
-      <div class="tab" data-tab="stats"><i class='bx bx-line-chart'></i> графики</div>
-      <div class="tab" data-tab="tools"><i class='bx bx-cog'></i> инструменты</div>
+      <div class="tab active" data-tab="history">история</div>
+      <div class="tab" data-tab="stats">графики</div>
+      <div class="tab" data-tab="tools">инструменты</div>
     </div>
     <div id="historyTab" class="tab-content">
       <div id="historyList"></div>
@@ -74,7 +103,7 @@
       <div class="weather-box"><span><i class='bx bx-cloud'></i> погода</span><span id="weatherText">загрузка...</span></div>
       <button class="btn-glass" id="exportGPXBtn"><i class='bx bx-map-alt'></i> экспорт GPX</button>
     </div>
-    <footer>VeloTracker • The style of life <span id="themeToggle" style="cursor:pointer; margin-left:8px;">🌓</span></footer>
+    <footer>VeloTracker • The style of life</footer>
   </div>
 </div>
 
